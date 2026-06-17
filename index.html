@@ -471,7 +471,7 @@ function rowHtml(r) {
       >${escHtml(noteVal) || '<span style="color:#94a3b8">Notiz…</span>'}</span>
     </td>
     <td style="white-space:nowrap">
-      <button class="btn-link" data-url="${escHtml(r.url)}" onclick="window.open(this.dataset.url,'_blank')">↗ Öffnen</button>
+      <a class="btn-link" href="${escHtml(r.url)}" target="_blank" rel="noopener noreferrer">↗ Öffnen</a>
       <button class="btn-del" onclick="deleteRow('${r.id}')" title="Löschen">✕</button>
     </td>
   </tr>`;
