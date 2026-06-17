@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bewerbungs-Tracker</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f1f5f9;
+  color: #1e293b;
+  min-height: 100vh;
+}
+
+header {
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+header h1 { font-size: 20px; font-weight: 700; color: #0f172a; }
+header span { font-size: 13px; color: #64748b; }
+
+.stats {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  flex-wrap: wrap;
+}
+.stat {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  min-width: 90px;
+  text-align: center;
+}
+.stat .num { font-size: 22px; font-weight: 700; color: #0f172a; }
+.stat .label { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+.toolbar {
+  padding: 0 24px 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.toolbar select, .toolbar input {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 13px;
+  background: #fff;
+  color: #1e293b;
+}
+.toolbar button {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.btn-primary { background: #3b82f6; color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.btn-secondary { background: #e2e8f0; color: #475569; }
+.btn-secondary:hover { background: #cbd5e1; }
+
+/* Bulk import */
+.bulk-panel {
+  margin: 0 24px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: none;
+}
+.bulk-panel.open { display: block; }
+.bulk-panel h3 { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: #0f172a; }
+.bulk-panel textarea {
+  width: 100%;
+  height: 100px;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 13px;
+  resize: vertical;
+  font-family: inherit;
+  color: #1e293b;
+}
+.bulk-panel .hint { font-size: 11px; color: #94a3b8; margin-top: 4px; margin-bottom: 10px; }
+.bulk-panel .actions { display: flex; gap: 8px; }
+
+/* Table */
+.table-wrap {
+  margin: 0 24px 24px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+thead th {
+  background: #f8fafc;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.1s;
+}
+tbody tr:hover { background: #f8fafc; }
+tbody tr:last-child { border-bottom: none; }
+td { padding: 9px 12px; vertical-align: middle; }
+
+.editable {
+  cursor: text;
+  border-radius: 5px;
+  padding: 3px 5px;
+  min-width: 60px;
+  display: inline-block;
+}
+.editable:hover { background: #f1f5f9; }
+.editable:focus {
+  outline: 2px solid #3b82f6;
+  background: #eff6ff;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.s-offen     { background: #f1f5f9; color: #475569; }
+.s-beworben  { background: #dbeafe; color: #1d4ed8; }
+.s-absage    { background: #fee2e2; color: #b91c1c; }
+.s-gespräch  { background: #fef3c7; color: #b45309; }
+.s-angebot   { background: #ede9fe; color: #7c3aed; }
+.s-angenommen{ background: #dcfce7; color: #15803d; }
+
+.portal-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #f1f5f9;
+  color: #475569;
+}
+.p-indeed    { background: #fef3c7; color: #92400e; }
+.p-linkedin  { background: #dbeafe; color: #1d4ed8; }
+.p-infojobs  { background: #dcfce7; color: #166534; }
+.p-bnp       { background: #ede9fe; color: #6d28d9; }
+.p-xing      { background: #d1fae5; color: #065f46; }
+.p-stepstone { background: #fee2e2; color: #991b1b; }
+
+.btn-link {
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #3b82f6;
+  white-space: nowrap;
+}
+.btn-link:hover { background: #eff6ff; border-color: #3b82f6; }
+
+.btn-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 14px;
+}
+.btn-del:hover { color: #ef4444; background: #fee2e2; }
+
+.url-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #64748b; }
+
+.status-select {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.status-select:focus { outline: none; }
+
+.loading { text-align: center; padding: 40px; color: #94a3b8; }
+.empty   { text-align: center; padding: 40px; color: #94a3b8; }
+
+/* Status dropdown overlay */
+.status-dropdown {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  padding: 6px;
+  z-index: 999;
+  min-width: 140px;
+}
+.status-option {
+  padding: 7px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.status-option:hover { background: #f1f5f9; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1e293b;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 9px;
+  font-size: 13px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s;
+  pointer-events: none;
+  z-index: 9999;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* Loading spinner */
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Bewerbungs-Tracker</h1>
+  <span id="last-updated"></span>
+</header>
+
+<div class="stats" id="stats">
+  <div class="stat"><div class="num" id="s-total">–</div><div class="label">Gesamt</div></div>
+  <div class="stat"><div class="num" id="s-offen">–</div><div class="label">Offen</div></div>
+  <div class="stat"><div class="num" id="s-beworben">–</div><div class="label">Beworben</div></div>
+  <div class="stat"><div class="num" id="s-gespräch">–</div><div class="label">Gespräch</div></div>
+  <div class="stat"><div class="num" id="s-absage">–</div><div class="label">Absagen</div></div>
+  <div class="stat"><div class="num" id="s-angenommen">–</div><div class="label">Angenommen</div></div>
+</div>
+
+<div class="toolbar">
+  <select id="filter-status">
+    <option value="">Alle Status</option>
+    <option value="offen">Offen</option>
+    <option value="beworben">Beworben</option>
+    <option value="gespräch">Gespräch</option>
+    <option value="absage">Absage</option>
+    <option value="angebot">Angebot</option>
+    <option value="angenommen">Angenommen</option>
+  </select>
+  <select id="filter-portal">
+    <option value="">Alle Portale</option>
+    <option value="Indeed">Indeed</option>
+    <option value="LinkedIn">LinkedIn</option>
+    <option value="InfoJobs">InfoJobs</option>
+    <option value="BNP Paribas">BNP Paribas</option>
+    <option value="XING">XING</option>
+    <option value="StepStone">StepStone</option>
+    <option value="Direkt">Direkt</option>
+    <option value="Sonstige">Sonstige</option>
+  </select>
+  <input id="search" type="text" placeholder="🔍 Suchen…" style="width:180px">
+  <button class="btn-primary" onclick="toggleBulk()">+ Links einfügen</button>
+  <button class="btn-secondary" onclick="loadData()"><span id="reload-icon">↻</span> Aktualisieren</button>
+</div>
+
+<div class="bulk-panel" id="bulk-panel">
+  <h3>Links massenweise importieren</h3>
+  <textarea id="bulk-input" placeholder="Füge beliebig viele URLs ein – eine pro Zeile oder durch Leerzeichen getrennt.
+Portale werden automatisch erkannt.
+
+https://es.indeed.com/viewjob?jk=abc123
+https://www.linkedin.com/jobs/view/123456
+..."></textarea>
+  <div class="hint">Indeed, LinkedIn, InfoJobs, StepStone, XING und Direktlinks werden erkannt.</div>
+  <div class="actions">
+    <button class="btn-primary" onclick="bulkImport()">Importieren</button>
+    <button class="btn-secondary" onclick="toggleBulk()">Abbrechen</button>
+    <span id="bulk-status" style="font-size:13px;color:#64748b;margin-left:8px;"></span>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Stelle / Unternehmen</th>
+        <th>Portal</th>
+        <th>Hinzugefügt</th>
+        <th>Notizen</th>
+        <th style="width:120px">Aktionen</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      <tr><td colspan="6" class="loading"><span class="spinner"></span> Lädt…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Status dropdown -->
+<div class="status-dropdown" id="status-dropdown" style="display:none"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const PROJECT_ID = 'hhkddsjttsxbqqsfmcci';
+let allRows = [];
+let activeStatusRow = null;
+
+// ── SQL helper ──────────────────────────────────────────────────────────────
+async function sql(query) {
+  try {
+    const r = await window.cowork.callMcpTool(
+      'mcp__bb450f73-2001-4957-8e1a-5fde61ea171b__execute_sql',
+      { project_id: PROJECT_ID, query }
+    );
+    // structuredContent first
+    if (r.structuredContent && Array.isArray(r.structuredContent)) return r.structuredContent;
+    // parse from text
+    const text = (r.content?.[0]?.text) || '';
+    const match = text.match(/<untrusted-data[^>]*>([\s\S]*?)<\/untrusted-data/);
+    if (match) {
+      const trimmed = match[1].trim();
+      if (trimmed === '' || trimmed === 'null') return [];
+      return JSON.parse(trimmed);
+    }
+    return [];
+  } catch(e) {
+    console.error('SQL error', e);
+    return null;
+  }
+}
+
+// ── Portal detection ────────────────────────────────────────────────────────
+function detectPortal(url) {
+  if (!url) return 'Sonstige';
+  const u = url.toLowerCase();
+  if (u.includes('indeed.com'))     return 'Indeed';
+  if (u.includes('linkedin.com'))   return 'LinkedIn';
+  if (u.includes('infojobs.net'))   return 'InfoJobs';
+  if (u.includes('xing.com'))       return 'XING';
+  if (u.includes('stepstone.'))     return 'StepStone';
+  if (u.includes('bnpparibas'))     return 'BNP Paribas';
+  if (u.includes('glassdoor'))      return 'Glassdoor';
+  if (u.includes('monster.'))       return 'Monster';
+  if (u.includes('arbeitsagentur')) return 'Arbeitsagentur';
+  if (u.includes('join.com'))       return 'JOIN';
+  if (u.includes('careerfairy'))    return 'CareerFairy';
+  return 'Direkt';
+}
+
+// ── Load data ───────────────────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('reload-icon').innerHTML = '<span class="spinner"></span>';
+  const rows = await sql(`SELECT * FROM public.job_applications ORDER BY date_added DESC`);
+  document.getElementById('reload-icon').innerHTML = '↻';
+  if (rows === null) { toast('Fehler beim Laden', true); return; }
+  allRows = rows;
+  updateStats(rows);
+  renderTable();
+  document.getElementById('last-updated').textContent = 'Zuletzt: ' + new Date().toLocaleTimeString('de-DE');
+}
+
+function updateStats(rows) {
+  const counts = { total: rows.length, offen: 0, beworben: 0, gespräch: 0, absage: 0, angenommen: 0 };
+  rows.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
+  document.getElementById('s-total').textContent = counts.total;
+  document.getElementById('s-offen').textContent = counts.offen;
+  document.getElementById('s-beworben').textContent = counts.beworben;
+  document.getElementById('s-gespräch').textContent = counts.gespräch;
+  document.getElementById('s-absage').textContent = counts.absage;
+  document.getElementById('s-angenommen').textContent = counts.angenommen;
+}
+
+// ── Render table ─────────────────────────────────────────────────────────────
+function getFilteredRows() {
+  const fs = document.getElementById('filter-status').value;
+  const fp = document.getElementById('filter-portal').value;
+  const q  = document.getElementById('search').value.toLowerCase();
+  return allRows.filter(r => {
+    if (fs && r.status !== fs) return false;
+    if (fp && r.portal !== fp) return false;
+    if (q) {
+      const hay = [r.job_title, r.company, r.url, r.notes, r.portal].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTable() {
+  const rows = getFilteredRows();
+  const tb = document.getElementById('table-body');
+  if (rows.length === 0) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty">Keine Einträge gefunden.</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(r => rowHtml(r)).join('');
+}
+
+function portalClass(p) {
+  const map = { 'Indeed':'indeed','LinkedIn':'linkedin','InfoJobs':'infojobs','BNP Paribas':'bnp','XING':'xing','StepStone':'stepstone' };
+  return 'p-' + (map[p] || '');
+}
+
+function fmtDate(d) {
+  if (!d) return '–';
+  return new Date(d).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'2-digit' });
+}
+
+function statusClass(s) { return 's-' + s; }
+
+function statusLabel(s) {
+  const m = { offen:'Offen', beworben:'Beworben', absage:'Absage', gespräch:'Gespräch', angebot:'Angebot', angenommen:'Angenommen' };
+  return m[s] || s;
+}
+
+function rowHtml(r) {
+  const titleVal = r.job_title || '';
+  const compVal  = r.company || '';
+  const noteVal  = r.notes || '';
+  return `<tr data-id="${r.id}">
+    <td>
+      <span class="status-badge ${statusClass(r.status)}" onclick="openStatusMenu(event,'${r.id}','${r.status}')">
+        ${statusLabel(r.status)}
+      </span>
+    </td>
+    <td>
+      <div>
+        <span class="editable" contenteditable="true"
+          data-field="job_title" data-id="${r.id}"
+          onblur="saveField(this)"
+          style="font-weight:500;display:block;min-width:80px"
+          title="Jobtitel bearbeiten"
+        >${escHtml(titleVal) || '<span style="color:#94a3b8;font-weight:400">Jobtitel…</span>'}</span>
+        <span class="editable" contenteditable="true"
+          data-field="company" data-id="${r.id}"
+          onblur="saveField(this)"
+          style="color:#64748b;font-size:12px;display:block"
+          title="Unternehmen bearbeiten"
+        >${escHtml(compVal) || '<span style="color:#94a3b8">Unternehmen…</span>'}</span>
+        <div class="url-cell" title="${escHtml(r.url)}">${escHtml(r.url)}</div>
+      </div>
+    </td>
+    <td><span class="portal-badge ${portalClass(r.portal)}">${escHtml(r.portal || 'Sonstige')}</span></td>
+    <td style="white-space:nowrap;color:#64748b;font-size:12px">${fmtDate(r.date_added)}</td>
+    <td>
+      <span class="editable" contenteditable="true"
+        data-field="notes" data-id="${r.id}"
+        onblur="saveField(this)"
+        style="color:#64748b;font-size:12px"
+        title="Notiz bearbeiten"
+      >${escHtml(noteVal) || '<span style="color:#94a3b8">Notiz…</span>'}</span>
+    </td>
+    <td style="white-space:nowrap">
+      <button class="btn-link" onclick="window.open('${escHtml(r.url)}','_blank')">↗ Öffnen</button>
+      <button class="btn-del" onclick="deleteRow('${r.id}')" title="Löschen">✕</button>
+    </td>
+  </tr>`;
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Status menu ──────────────────────────────────────────────────────────────
+const STATUSES = ['offen','beworben','gespräch','angebot','absage','angenommen'];
+
+function openStatusMenu(e, id, current) {
+  e.stopPropagation();
+  activeStatusRow = id;
+  const dd = document.getElementById('status-dropdown');
+  dd.innerHTML = STATUSES.map(s =>
+    `<div class="status-option" onclick="setStatus('${id}','${s}')">${statusLabel(s)}</div>`
+  ).join('');
+  const rect = e.target.getBoundingClientRect();
+  dd.style.display = 'block';
+  dd.style.left = rect.left + 'px';
+  dd.style.top  = (rect.bottom + 4) + 'px';
+}
+
+document.addEventListener('click', () => {
+  document.getElementById('status-dropdown').style.display = 'none';
+});
+
+async function setStatus(id, status) {
+  document.getElementById('status-dropdown').style.display = 'none';
+  const row = allRows.find(r => r.id === id);
+  if (!row) return;
+  row.status = status;
+  renderTable();
+  await sql(`UPDATE public.job_applications SET status='${status}' WHERE id='${id}'`);
+  updateStats(allRows);
+  toast('Status aktualisiert');
+}
+
+// ── Inline editing ────────────────────────────────────────────────────────────
+async function saveField(el) {
+  const id    = el.dataset.id;
+  const field = el.dataset.field;
+  // strip any placeholder spans
+  const val   = el.innerText.trim();
+  const row   = allRows.find(r => r.id === id);
+  if (!row || row[field] === val) return;
+  row[field] = val;
+  const escaped = val.replace(/'/g, "''");
+  await sql(`UPDATE public.job_applications SET ${field}='${escaped}' WHERE id='${id}'`);
+  toast('Gespeichert');
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteRow(id) {
+  if (!confirm('Eintrag löschen?')) return;
+  allRows = allRows.filter(r => r.id !== id);
+  renderTable();
+  updateStats(allRows);
+  await sql(`DELETE FROM public.job_applications WHERE id='${id}'`);
+  toast('Gelöscht');
+}
+
+// ── Bulk import ───────────────────────────────────────────────────────────────
+function toggleBulk() {
+  document.getElementById('bulk-panel').classList.toggle('open');
+  document.getElementById('bulk-input').value = '';
+  document.getElementById('bulk-status').textContent = '';
+}
+
+async function bulkImport() {
+  const text = document.getElementById('bulk-input').value;
+  const urlRegex = /https?:\/\/[^\s,<>\"]+/g;
+  const found = text.match(urlRegex) || [];
+  // deduplicate
+  const unique = [...new Set(found)];
+  // filter out non-job links
+  const skip = ['google.com/search', 'webmailer.uni-duisburg-essen', 'post-apply', 'smartapply.indeed.com/beta'];
+  const jobUrls = unique.filter(u => !skip.some(s => u.includes(s)));
+
+  if (jobUrls.length === 0) {
+    document.getElementById('bulk-status').textContent = 'Keine gültigen URLs gefunden.';
+    return;
+  }
+
+  document.getElementById('bulk-status').textContent = `Importiere ${jobUrls.length} Links…`;
+
+  // build INSERT values
+  const existingUrls = new Set(allRows.map(r => {
+    try { const u = new URL(r.url); return u.origin + u.pathname + (u.searchParams.get('jk') ? '?jk=' + u.searchParams.get('jk') : u.search); } catch(e){ return r.url; }
+  }));
+
+  const toInsert = jobUrls.filter(u => {
+    try { const parsed = new URL(u); const key = parsed.origin + parsed.pathname + (parsed.searchParams.get('jk') ? '?jk=' + parsed.searchParams.get('jk') : ''); return !existingUrls.has(key); }
+    catch(e) { return true; }
+  });
+
+  if (toInsert.length === 0) {
+    document.getElementById('bulk-status').textContent = 'Alle URLs bereits vorhanden.';
+    return;
+  }
+
+  const values = toInsert.map(u => {
+    const portal = detectPortal(u);
+    const safeU = u.replace(/'/g, "''");
+    return `('${safeU}', '${portal}', 'offen', now())`;
+  }).join(',\n');
+
+  await sql(`INSERT INTO public.job_applications (url, portal, status, date_added) VALUES ${values}`);
+  document.getElementById('bulk-status').textContent = `✓ ${toInsert.length} Links importiert!`;
+  toggleBulk();
+  await loadData();
+  toast(`${toInsert.length} Bewerbungen importiert`);
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+document.getElementById('filter-status').addEventListener('change', renderTable);
+document.getElementById('filter-portal').addEventListener('change', renderTable);
+document.getElementById('search').addEventListener('input', renderTable);
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, err) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = err ? '#ef4444' : '#1e293b';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
