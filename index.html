@@ -340,34 +340,14 @@ https://www.linkedin.com/jobs/view/123456
 <div class="status-dropdown" id="status-dropdown" style="display:none"></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
-const PROJECT_ID = 'hhkddsjttsxbqqsfmcci';
+const SUPABASE_URL  = 'https://hhkddsjttsxbqqsfmcci.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoa2Rkc2p0dHN4YnFxc2ZtY2NpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDcxNDQsImV4cCI6MjA4Nzc4MzE0NH0.nukPnORRywuWCFVhUg08LZRgIi-p-xr_vD6x6Bdgg40';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 let allRows = [];
 let activeStatusRow = null;
-
-// ── SQL helper ──────────────────────────────────────────────────────────────
-async function sql(query) {
-  try {
-    const r = await window.cowork.callMcpTool(
-      'mcp__Supabase__execute_sql',
-      { project_id: PROJECT_ID, query }
-    );
-    // structuredContent first
-    if (r.structuredContent && Array.isArray(r.structuredContent)) return r.structuredContent;
-    // parse from text — handle both {result:...} and {content:[{text:...}]} shapes
-    const text = (typeof r.result === 'string' ? r.result : '') || (r.content?.[0]?.text) || '';
-    const match = text.match(/<untrusted-data[^>]*>([\s\S]*?)<\/untrusted-data/);
-    if (match) {
-      const trimmed = match[1].trim();
-      if (trimmed === '' || trimmed === 'null') return [];
-      return JSON.parse(trimmed);
-    }
-    return [];
-  } catch(e) {
-    console.error('SQL error', e);
-    return null;
-  }
-}
 
 // ── Portal detection ────────────────────────────────────────────────────────
 function detectPortal(url) {
@@ -390,11 +370,11 @@ function detectPortal(url) {
 // ── Load data ───────────────────────────────────────────────────────────────
 async function loadData() {
   document.getElementById('reload-icon').innerHTML = '<span class="spinner"></span>';
-  const rows = await sql(`SELECT * FROM public.job_applications ORDER BY date_added DESC`);
+  const { data, error } = await db.from('job_applications').select('*').order('date_added', { ascending: false });
   document.getElementById('reload-icon').innerHTML = '↻';
-  if (rows === null) { toast('Fehler beim Laden', true); return; }
-  allRows = rows;
-  updateStats(rows);
+  if (error) { console.error(error); toast('Fehler beim Laden', true); return; }
+  allRows = data || [];
+  updateStats(allRows);
   renderTable();
   document.getElementById('last-updated').textContent = 'Zuletzt: ' + new Date().toLocaleTimeString('de-DE');
 }
@@ -528,7 +508,7 @@ async function setStatus(id, status) {
   if (!row) return;
   row.status = status;
   renderTable();
-  await sql(`UPDATE public.job_applications SET status='${status}' WHERE id='${id}'`);
+  await db.from('job_applications').update({ status }).eq('id', id);
   updateStats(allRows);
   toast('Status aktualisiert');
 }
@@ -537,13 +517,11 @@ async function setStatus(id, status) {
 async function saveField(el) {
   const id    = el.dataset.id;
   const field = el.dataset.field;
-  // strip any placeholder spans
   const val   = el.innerText.trim();
   const row   = allRows.find(r => r.id === id);
   if (!row || row[field] === val) return;
   row[field] = val;
-  const escaped = val.replace(/'/g, "''");
-  await sql(`UPDATE public.job_applications SET ${field}='${escaped}' WHERE id='${id}'`);
+  await db.from('job_applications').update({ [field]: val }).eq('id', id);
   toast('Gespeichert');
 }
 
@@ -553,7 +531,7 @@ async function deleteRow(id) {
   allRows = allRows.filter(r => r.id !== id);
   renderTable();
   updateStats(allRows);
-  await sql(`DELETE FROM public.job_applications WHERE id='${id}'`);
+  await db.from('job_applications').delete().eq('id', id);
   toast('Gelöscht');
 }
 
@@ -596,13 +574,14 @@ async function bulkImport() {
     return;
   }
 
-  const values = toInsert.map(u => {
-    const portal = detectPortal(u);
-    const safeU = u.replace(/'/g, "''");
-    return `('${safeU}', '${portal}', 'offen', now())`;
-  }).join(',\n');
+  const values = toInsert.map(u => ({
+    url: u,
+    portal: detectPortal(u),
+    status: 'offen',
+    date_added: new Date().toISOString()
+  }));
 
-  await sql(`INSERT INTO public.job_applications (url, portal, status, date_added) VALUES ${values}`);
+  await db.from('job_applications').insert(values);
   document.getElementById('bulk-status').textContent = `✓ ${toInsert.length} Links importiert!`;
   toggleBulk();
   await loadData();
