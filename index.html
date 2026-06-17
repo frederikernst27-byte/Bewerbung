@@ -263,6 +263,7 @@ td { padding: 9px 12px; vertical-align: middle; }
 
 <header>
   <h1>📋 Bewerbungs-Tracker</h1>
+  <span style="font-size:11px;color:#94a3b8;margin-left:4px">v1.1</span>
   <span id="last-updated"></span>
 </header>
 
@@ -353,8 +354,8 @@ async function sql(query) {
     );
     // structuredContent first
     if (r.structuredContent && Array.isArray(r.structuredContent)) return r.structuredContent;
-    // parse from text
-    const text = (r.content?.[0]?.text) || '';
+    // parse from text — handle both {result:...} and {content:[{text:...}]} shapes
+    const text = (typeof r.result === 'string' ? r.result : '') || (r.content?.[0]?.text) || '';
     const match = text.match(/<untrusted-data[^>]*>([\s\S]*?)<\/untrusted-data/);
     if (match) {
       const trimmed = match[1].trim();
