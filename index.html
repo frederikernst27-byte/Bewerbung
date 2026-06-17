@@ -348,7 +348,7 @@ let activeStatusRow = null;
 async function sql(query) {
   try {
     const r = await window.cowork.callMcpTool(
-      'mcp__bb450f73-2001-4957-8e1a-5fde61ea171b__execute_sql',
+      'mcp__Supabase__execute_sql',
       { project_id: PROJECT_ID, query }
     );
     // structuredContent first
